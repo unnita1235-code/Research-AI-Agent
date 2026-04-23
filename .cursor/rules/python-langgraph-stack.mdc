@@ -1,0 +1,50 @@
+---
+description: Python 3.11+ stack—LangGraph, Tavily, Pydantic, modular layout, env for secrets
+globs: **/*.py
+alwaysApply: false
+---
+
+# Python stack (3.11+)
+
+## Runtime and orchestration
+
+- Target **Python 3.11+** in `pyproject.toml`, `setup.cfg`, or CI; avoid 3.10-only syntax assumptions when typing.
+- Use **LangGraph** for agent/orchestrator flows: compile a graph, wire nodes, keep side effects in nodes—not scattered in the graph module.
+
+## Search
+
+- Use **Tavily** (or the project’s Tavily client wrapper) for web/search calls; do not add parallel ad-hoc `httpx` search unless Tavily is unsuitable and documented.
+
+## State and config
+
+- Prefer **Pydantic v2** models for graph state, tool inputs/outputs, and any structured boundaries (`BaseModel`, `Field` defaults, validators where needed).
+- **Never** hardcode API keys, tokens, or secrets. Load from environment (e.g. `os.environ`, `pydantic-settings` `BaseSettings`) and document required variable names in code comments or a single env example file the team already uses.
+
+## Module layout
+
+Keep responsibilities split—do not monolith one file:
+
+| Concern   | Suggested module(s)   |
+| --------- | -------------------- |
+| State     | `state.py` (Pydantic state/schema) |
+| Nodes     | `nodes.py` or `nodes/*.py` (per-node functions) |
+| Graph     | `graph.py` (build/compile the LangGraph) |
+
+Import direction: `graph` → `nodes` / `state`; avoid cycles (`state` should not import `graph`).
+
+## Minimal patterns
+
+```python
+# state.py — Pydantic only for shapes
+# nodes.py — pure/step logic, Tavily + LLM calls
+# graph.py — StateGraph, add_node, add_edge, compile
+```
+
+```python
+# secrets: OK
+import os
+api_key = os.environ["TAVILY_API_KEY"]
+
+# secrets: avoid
+TAVILY_API_KEY = "tvly-..."  # never
+```

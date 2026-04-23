@@ -1,0 +1,12 @@
+{
+  "topics": [
+    "RAG with vector databases: trade-offs in 2025",
+    "Async Python asyncio event loop in production",
+    "EU AI Act: obligations for high-risk systems",
+    "LangGraph state machines vs linear pipelines",
+    "Retrieval metrics: nDCG vs recall@k for search",
+    "Ollama vs cloud LLM for local agents",
+    "FastAPI background tasks and SSE patterns",
+    "Structured output with Pydantic and LLMs"
+  ]
+}

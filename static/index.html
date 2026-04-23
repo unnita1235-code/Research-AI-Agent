@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deep Research</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: { extend: { fontFamily: { sans: ['Instrument Sans', 'system-ui', 'sans-serif'] } } },
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" defer></script>
+  </head>
+  <body class="min-h-full">
+    <header class="app-header no-print" role="banner">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <div class="flex items-center gap-3">
+          <span
+            class="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold"
+            style="background: var(--accent-dim); color: var(--accent-bright)"
+            >DR</span
+          >
+          <div>
+            <h1 class="text-base font-semibold tracking-tight" style="color: var(--text)">Deep Research</h1>
+            <p class="text-xs" style="color: var(--text-faint)">Tavily + LangGraph + citations</p>
+          </div>
+        </div>
+        <div id="header-badges" class="hidden flex flex-wrap items-center justify-end gap-1.5 text-xs sm:flex"></div>
+      </div>
+    </header>
+
+    <div class="hero-gradient mx-4 mt-4 max-w-6xl sm:mx-auto" role="region" aria-label="Intro">
+      <div class="px-5 py-6 sm:px-8 sm:py-8">
+        <h2 class="text-xl font-semibold leading-tight text-white sm:text-2xl">Multi-step research, stream-ready</h2>
+        <p class="mt-2 max-w-2xl text-sm" style="color: var(--text-muted)">
+          Enter a topic. Your job runs in the background; this page subscribes to progress over SSE. Keep this tab
+          open until the run finishes. Results are sourced with links for verification.
+        </p>
+      </div>
+    </div>
+
+    <div class="layout-grid" style="padding-top: 1.5rem">
+      <main class="min-w-0" aria-labelledby="form-heading">
+        <h2 id="form-heading" class="sr-only">Start research</h2>
+        <form id="f" class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end" autocomplete="on">
+          <div class="flex-1">
+            <label
+              for="topic"
+              class="mb-1 block text-xs font-semibold uppercase tracking-wider"
+              style="color: var(--text-faint)"
+              >Topic</label
+            >
+            <input
+              id="topic"
+              name="topic"
+              type="text"
+              required
+              maxlength="4000"
+              placeholder="e.g. Vector databases for RAG in 2025"
+              class="w-full rounded-lg border px-4 py-2.5 text-sm transition focus:outline-none focus:ring-2"
+              style="
+                background: var(--surface);
+                border-color: var(--border-subtle);
+                color: var(--text);
+                --tw-ring-color: var(--accent);
+              "
+            />
+          </div>
+          <button
+            type="submit"
+            id="go"
+            class="rounded-lg px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+            style="background: linear-gradient(135deg, var(--accent) 0%, #6366f1 100%)"
+          >
+            Research
+          </button>
+        </form>
+
+        <p id="suggest-chips" class="mb-4 text-xs" style="color: var(--text-faint)">
+          <span class="font-semibold" style="color: var(--text-muted)">Try:</span>
+          <span id="chips"></span>
+        </p>
+
+        <details class="mb-3 no-print rounded-lg border px-3 py-2" style="border-color: var(--border-subtle); background: var(--bg-elevated)">
+          <summary class="cursor-pointer text-xs font-semibold" style="color: var(--text-muted)">Research options</summary>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2">
+            <label class="text-xs" style="color: var(--text-faint)">
+              Depth
+              <select
+                id="opt-depth"
+                class="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                style="border-color: var(--border); background: var(--surface); color: var(--text)"
+              >
+                <option value="1" selected>1 pass (default)</option>
+                <option value="2">2 passes (gap + second search)</option>
+              </select>
+            </label>
+            <label class="text-xs" style="color: var(--text-faint)">
+              Audience
+              <select
+                id="opt-audience"
+                class="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                style="border-color: var(--border); background: var(--surface); color: var(--text)"
+              >
+                <option value="beginner">Beginner</option>
+                <option value="general" selected>General</option>
+                <option value="expert">Expert</option>
+              </select>
+            </label>
+            <label class="text-xs" style="color: var(--text-faint)">
+              Output style
+              <select
+                id="opt-style"
+                class="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                style="border-color: var(--border); background: var(--surface); color: var(--text)"
+              >
+                <option value="bullets" selected>Bullets (with links in findings)</option>
+                <option value="narrative">Narrative (numbered with [n] cites)</option>
+              </select>
+            </label>
+            <label class="text-xs" style="color: var(--text-faint)">
+              First-pass query count (3–7)
+              <input
+                id="opt-breadth"
+                type="number"
+                min="3"
+                max="7"
+                value="4"
+                class="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                style="border-color: var(--border); background: var(--surface); color: var(--text)"
+              />
+            </label>
+            <label class="text-xs" style="color: var(--text-faint)">
+              Max source rows (3–200)
+              <input
+                id="opt-maxsrc"
+                type="number"
+                min="3"
+                max="200"
+                value="24"
+                class="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                style="border-color: var(--border); background: var(--surface); color: var(--text)"
+              />
+            </label>
+            <label class="text-xs" style="color: var(--text-faint)">
+              Tavily max results / query
+              <input
+                id="opt-maxres"
+                type="number"
+                min="1"
+                max="10"
+                value="5"
+                class="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                style="border-color: var(--border); background: var(--surface); color: var(--text)"
+              />
+            </label>
+          </div>
+        </details>
+
+        <div
+          id="settings-strip"
+          class="mb-4 rounded-lg border px-3 py-2 text-xs"
+          style="border-color: var(--border-subtle); background: var(--bg-elevated); color: var(--text-faint)"
+        >
+          <span>Loading config…</span>
+        </div>
+
+        <p id="err" class="mb-3 hidden rounded-lg border px-3 py-2 text-sm" style="border-color: rgba(248, 113, 113, 0.4); color: #fecaca" role="alert" aria-live="assertive"></p>
+
+        <div id="jobbar" class="mb-4 hidden rounded-lg border p-4" style="border-color: var(--border-subtle); background: var(--surface)">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2 text-xs" style="color: var(--text-muted)">
+              <span class="font-semibold" style="color: var(--text-faint)">Job</span>
+              <code id="jid" class="max-w-full truncate" style="color: var(--accent-bright)"></code>
+              <span id="jobtime" class="text-[0.7rem]"></span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="status-pill" class="job-pill job-pill--pending">Pending</span>
+              <button type="button" id="copy-job-id" class="btn-ghost text-xs">Copy ID</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="report-panel mb-2 rounded-lg border p-4" style="border-color: var(--border-subtle); background: var(--bg-elevated)">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-xs font-bold uppercase tracking-widest" style="color: var(--text-faint)">Report</h2>
+            <div class="report-toolbar no-print" id="report-toolbar" hidden>
+              <button type="button" class="btn-ghost" id="btn-copy" title="Copy markdown">Copy MD</button>
+              <button type="button" class="btn-ghost" id="btn-dl" title="Download .md file">Download MD</button>
+              <button type="button" class="btn-ghost" id="btn-dl-docx" title="Download Word">DOCX</button>
+              <button type="button" class="btn-ghost" id="btn-dl-html" title="Download HTML">HTML</button>
+              <button type="button" class="btn-ghost" id="btn-print" title="Print">Print</button>
+              <button
+                type="button"
+                class="btn-ghost"
+                id="btn-executive"
+                title="Add AI overview (uses API)"
+                hidden
+              >AI overview</button>
+              <button type="button" class="btn-ghost" id="btn-tldr" title="TL;DR" hidden>TL;DR</button>
+              <button type="button" class="btn-ghost" id="btn-counter" title="Limitations" hidden>Limits / counterpoints</button>
+              <button type="button" class="btn-ghost" id="btn-translate" title="Translate" hidden>Translate</button>
+            </div>
+          </div>
+          <p id="exec-blurb" class="mb-3 hidden rounded border px-3 py-2 text-sm" style="border-color: var(--border); color: var(--text-muted)"></p>
+          <p id="ai-extra-blurb" class="mb-3 hidden rounded border px-3 py-2 text-sm" style="border-color: var(--border); color: var(--text-muted)"></p>
+          <div id="ask-wrap" class="mb-3 no-print hidden rounded border p-3" style="border-color: var(--border-subtle)">
+            <label for="ask-q" class="mb-1 block text-xs font-semibold" style="color: var(--text-faint)">Ask about this report (context-only)</label>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <input
+                id="ask-q"
+                type="text"
+                class="min-w-0 flex-1 rounded border px-3 py-2 text-sm"
+                style="border-color: var(--border); background: var(--surface); color: var(--text)"
+                placeholder="Question…"
+                maxlength="2000"
+              />
+              <button type="button" id="btn-ask" class="btn-ghost text-sm" style="white-space: nowrap">Ask</button>
+            </div>
+            <p id="ask-ans" class="mt-2 text-sm" style="color: var(--text-muted)"></p>
+          </div>
+          <div id="out-skeleton" class="skeleton mb-2 hidden" aria-hidden="true"></div>
+          <article id="out" class="report-body rounded-lg p-1">
+            <p style="color: var(--text-faint)">Your Markdown report will appear here with formatting.</p>
+          </article>
+        </div>
+
+        <div
+          id="job-history"
+          class="no-print mb-3 hidden rounded-lg border p-3 text-xs"
+          style="border-color: var(--border-subtle); background: var(--bg-elevated); color: var(--text-muted)"
+        >
+          <div class="mb-1 font-bold" style="color: var(--text-faint)">Recent jobs</div>
+          <ul id="job-history-list" class="m-0 list-none space-y-1 p-0"></ul>
+        </div>
+
+        <details class="log-details no-print" id="log-wrap">
+          <summary>
+            <span class="chev">▶</span>
+            <span>Activity log</span>
+          </summary>
+          <div
+            id="log"
+            class="mt-2 rounded-lg border p-3"
+            style="border-color: var(--border-subtle); background: var(--bg)"
+            role="log"
+            aria-live="polite"
+          >
+            <p class="m-0" style="color: var(--text-faint)">Progress and steps will be listed here.</p>
+          </div>
+        </details>
+      </main>
+
+      <aside class="no-print space-y-4" aria-label="Pipeline">
+        <div class="rounded-lg border p-4" style="border-color: var(--border-subtle); background: var(--surface)">
+          <h3 class="mb-3 text-xs font-bold uppercase tracking-widest" style="color: var(--text-faint)">Pipeline</h3>
+          <div class="stepper" id="stepper">
+            <div class="step" data-step="0">
+              <span class="step-dot" aria-hidden="true"></span>
+              <div>
+                <div class="step-label">1 · Queries</div>
+                <div class="step-title">Query Generator</div>
+              </div>
+            </div>
+            <div class="step" data-step="1">
+              <span class="step-dot" aria-hidden="true"></span>
+              <div>
+                <div class="step-label">2 · Search</div>
+                <div class="step-title">Tavily Searcher</div>
+              </div>
+            </div>
+            <div class="step" data-step="2">
+              <span class="step-dot" aria-hidden="true"></span>
+              <div>
+                <div class="step-label">3 · Facts</div>
+                <div class="step-title">Fact Extractor</div>
+              </div>
+            </div>
+            <div class="step" data-step="3">
+              <span class="step-dot" aria-hidden="true"></span>
+              <div>
+                <div class="step-label">4 · Write</div>
+                <div class="step-title">Report Writer</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="rounded-lg border p-4 text-xs leading-relaxed" style="border-color: var(--border-subtle); color: var(--text-muted)">
+          <h3 class="mb-1 font-bold" style="color: var(--text)">How it works</h3>
+          <p>Queries run in parallel (bounded time per search). Facts are de-duplicated. The report is built from verified source links only.</p>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="app-footer" role="contentinfo">
+      <p class="m-0">
+        Deep Research Agent
+        <span id="ver-foot">v—</span> ·
+        <span>Runs in the background — do not close this tab while status is <em>running</em>. Jobs are not persisted after
+        a server restart — unless job DB is enabled (see <code class="text-[0.65rem]">ENABLE_JOB_DB</code> in env).</span>
+      </p>
+    </footer>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
