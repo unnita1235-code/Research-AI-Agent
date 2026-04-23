@@ -19,7 +19,7 @@ env:
   ENABLE_JOB_DB: "0"
   RATE_LIMIT_PER_MIN: "0"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
-  PIP_NO_CACHE_DIR: "1"
+  # Do not set PIP_NO_CACHE_DIR: it breaks actions/setup-python "cache: pip" (pip cache dir).
 
 jobs:
   test:
