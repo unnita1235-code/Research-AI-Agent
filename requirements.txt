@@ -12,6 +12,6 @@ langchain-ollama>=0.2.0       # tested: 1.1.0
 # Export
 python-docx>=1.1.0       # tested: 1.2.0
 
-# Vector store RAG (added in TASK-03)
-chromadb>=0.4.0       # tested: 1.5.8
-sentence-transformers>=3.0.0       # tested: 5.4.1
+# Vector store RAG (optional, see requirements-rag.txt)
+# chromadb>=0.4.0       
+# sentence-transformers>=3.0.0

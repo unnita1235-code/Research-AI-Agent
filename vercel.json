@@ -1,0 +1,5 @@
+{
+  "buildCommand": "echo 'Deploying static frontend only...'",
+  "outputDirectory": "static",
+  "framework": null
+}
