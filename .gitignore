@@ -29,3 +29,11 @@ Thumbs.db
 
 # Local SQLite job store
 data/
+
+# Node / Worker
+node_modules/
+worker/node_modules/
+.wrangler/
+.cf-pages/
+data/
+*.sqlite
