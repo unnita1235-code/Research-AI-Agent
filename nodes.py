@@ -596,12 +596,78 @@ def _safe_json_dumps(obj: object) -> str:
     return json.dumps(obj, ensure_ascii=False)[: 120_000]
 
 
+async def _llm_synthesize_report(topic: str, facts: list[str], ro: ResearchOptions) -> str:
+    """Synthesize a research report using the LLM."""
+    if not facts:
+        return _format_cited_report(topic, facts, ro)
+
+    url_to_n = _url_to_cite_index(facts)
+    numbered_facts: list[str] = []
+    for f in facts:
+        t, nums_ = _fact_text_and_cite_nums(f, url_to_n)
+        cite_str = "".join(f" [{n}]" for n in nums_) if nums_ else ""
+        numbered_facts.append(f"- {t}{cite_str}")
+
+    ref_block_lines: list[str] = []
+    for u, i in sorted(url_to_n.items(), key=lambda x: x[1]):
+        ref_block_lines.append(f"[{i}] {u}")
+
+    facts_text = "\n".join(numbered_facts)
+    refs_text = "\n".join(ref_block_lines)
+
+    aud_str = {
+        "beginner": "Audience: non-specialist; avoid heavy jargon and define terms.",
+        "general": "Audience: informed reader.",
+        "expert": "Audience: specialist; use domain terminology.",
+    }.get(ro.audience, "")
+
+    system_prompt = (
+        "You are an expert researcher writing a structured Markdown research report.\n"
+        "Include a title, an executive summary paragraph, a findings section with inline citations "
+        "formatted as [n] referencing the numbered reference list, and a references section.\n"
+        f"Style constraints: {ro.output_style}. {aud_str}\n"
+        "Do not add any fact, URL, or claim that is not present in the numbered source list below."
+    )
+
+    user_prompt = (
+        f"Topic: {topic}\n\n"
+        "Source Facts:\n"
+        f"{facts_text}\n\n"
+        "References Map:\n"
+        f"{refs_text}"
+    )
+
+    try:
+        llm = _get_chat()
+        out = await llm.ainvoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt),
+            ],
+            max_tokens=2048
+        )
+        if hasattr(out, "content") and isinstance(out.content, str):
+            return out.content
+        return str(out)
+    except Exception as e:
+        logger.warning("LLM report synthesis failed: %s. Falling back to template.", e)
+        return _format_cited_report(topic, facts, ro)
+
+
 async def report_writer_node(state: ResearchState) -> dict[str, str]:
     """Render from ``extracted_facts``; style/audience from options."""
     topic = (state.get("topic") or "").strip() or "Research"
     facts = state.get("extracted_facts") or []
     ro = options_from_state(state)
-    return {"final_report": _format_cited_report(topic, facts, ro)}
+    
+    if _llm_mode() == "heuristic":
+        logger.info("Using heuristic template for report writer.")
+        report = _format_cited_report(topic, facts, ro)
+    else:
+        logger.info("Using LLM synthesis for report writer.")
+        report = await _llm_synthesize_report(topic, facts, ro)
+        
+    return {"final_report": report}
 
 
 class _GapList(BaseModel):
