@@ -1,13 +1,17 @@
 # Python 3.11+ (see .python-version or CI)
 # Deep Research Agent — core stack
-fastapi>=0.115.0
-uvicorn[standard]>=0.32.0
-langgraph>=0.2.0
-langchain-anthropic>=0.3.0
-pydantic>=2.0.0
-python-dotenv>=1.0.0
-tavily-python>=0.5.0
+fastapi>=0.115.0       # tested: 0.115.6
+uvicorn[standard]>=0.32.0       # tested: 0.34.0
+langgraph>=0.2.0       # tested: 1.1.9
+langchain-anthropic>=0.3.0       # tested: 1.4.1
+pydantic>=2.0.0       # tested: 2.13.3
+python-dotenv>=1.0.0       # tested: 1.0.1
+tavily-python>=0.5.0       # tested: 0.7.23
 # Optional: local free LLM (set LLM_PROVIDER=ollama)
-langchain-ollama>=0.2.0
+langchain-ollama>=0.2.0       # tested: 1.1.0
 # Export
-python-docx>=1.1.0
+python-docx>=1.1.0       # tested: 1.2.0
+
+# Vector store RAG (added in TASK-03)
+chromadb>=0.4.0       # tested: 1.5.8
+sentence-transformers>=3.0.0       # tested: 5.4.1

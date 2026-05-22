@@ -1,0 +1,9 @@
+.git
+.env
+__pycache__
+*.pyc
+.pytest_cache
+data/
+*.sqlite
+node_modules
+.cursor
