@@ -601,9 +601,16 @@ async def _llm_synthesize_report(topic: str, facts: list[str], ro: ResearchOptio
     if not facts:
         return _format_cited_report(topic, facts, ro)
 
+    from vector_store import rag_enabled, retrieve_relevant_facts
+    active_facts = facts
+    if rag_enabled():
+        retrieved = retrieve_relevant_facts(topic[:32], topic, n=16)
+        if retrieved:
+            active_facts = retrieved
+
     url_to_n = _url_to_cite_index(facts)
     numbered_facts: list[str] = []
-    for f in facts:
+    for f in active_facts:
         t, nums_ = _fact_text_and_cite_nums(f, url_to_n)
         cite_str = "".join(f" [{n}]" for n in nums_) if nums_ else ""
         numbered_facts.append(f"- {t}{cite_str}")

@@ -180,6 +180,10 @@ async def run_research(
         elif stream_progress:
             _print_state_update(last, step)
 
+    from vector_store import rag_enabled, embed_facts
+    if rag_enabled():
+        embed_facts(job_id=init["topic"][:32], facts=last.get("extracted_facts", []))
+
     return last
 
 
