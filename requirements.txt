@@ -8,6 +8,8 @@ python-dotenv>=1.0.0       # tested: 1.0.1
 tavily-python>=0.5.0       # tested: 0.7.23
 # Google Gemini (Primary LLM)
 langchain-google-genai>=2.0.0
+# Legacy import in research_extras (module-level); keep for CI import graph
+langchain-anthropic>=0.3.0       # tested: 1.4.1
 # Optional: local free LLM (set LLM_PROVIDER=ollama)
 langchain-ollama>=0.2.0       # tested: 1.1.0
 # Export
