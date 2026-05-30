@@ -84,13 +84,11 @@ def _resolve_job(job_id: str) -> dict[str, Any] | None:
 
 
 def _env_ok_for_research() -> list[str]:
-    mode = (os.environ.get("LLM_PROVIDER") or "").strip().lower() or "anthropic"
+    mode = (os.environ.get("LLM_PROVIDER") or "").strip().lower() or "gemini"
     if mode in ("heuristic", "ollama"):
         required: tuple[str, ...] = ("TAVILY_API_KEY",)
-    elif mode == "gemini":
-        required = ("GOOGLE_API_KEY", "TAVILY_API_KEY")
     else:
-        required = ("ANTHROPIC_API_KEY", "TAVILY_API_KEY")
+        required = ("GOOGLE_API_KEY", "TAVILY_API_KEY")
     return [k for k in required if not os.environ.get(k)]
 
 
@@ -99,7 +97,7 @@ def _ensure_env_or_raise() -> None:
     if missing:
         raise HTTPException(
             status_code=503,
-            detail=f"Server missing required env: {', '.join(missing)}. Set LLM_PROVIDER=heuristic to skip Anthropic.",
+            detail=f"Server missing required env: {', '.join(missing)}. Set LLM_PROVIDER=heuristic to skip Gemini.",
         )
 
 
@@ -215,11 +213,10 @@ def root() -> RedirectResponse:
 
 @app.get("/config")
 def public_config() -> dict[str, Any]:
-    p = (os.environ.get("LLM_PROVIDER") or "").strip().lower() or "anthropic"
+    p = (os.environ.get("LLM_PROVIDER") or "").strip().lower() or "gemini"
     return {
         "llm_provider": p,
         "tavily_configured": bool((os.environ.get("TAVILY_API_KEY") or "").strip()),
-        "anthropic_configured": bool((os.environ.get("ANTHROPIC_API_KEY") or "").strip()),
         "gemini_configured": bool((os.environ.get("GOOGLE_API_KEY") or "").strip()),
         "suggest_topics_enabled": suggest_topics_enabled(),
         "executive_summary_enabled": executive_summary_enabled(),
@@ -556,7 +553,7 @@ def _cli() -> int:
         return 0
 
     if _env_ok_for_research():
-        print("Missing required env. Copy .env.example. Set LLM_PROVIDER=heuristic to skip Anthropic.", file=sys.stderr)
+        print("Missing required env. Copy .env.example. Set LLM_PROVIDER=heuristic to skip Gemini.", file=sys.stderr)
         return 1
 
     topic = " ".join(u.args).strip() if u.args else ""

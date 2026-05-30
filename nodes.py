@@ -19,7 +19,6 @@ import re
 from urllib.parse import urlparse, urlunparse
 from typing import Any
 
-from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -30,9 +29,6 @@ from research_options import ResearchOptions, options_from_state
 from state import ResearchState
 
 logger = logging.getLogger(__name__)
-
-# https://docs.anthropic.com/en/docs/about-claude/models
-CLAUDE_3_5_SONNET = "claude-3-5-sonnet-20241022"
 
 # Trim long snippets so downstream LLM context stays bounded
 _MAX_SNIPPET_CHARS = 3000
@@ -50,11 +46,11 @@ _STOP = frozenset(
 
 def _llm_mode() -> str:
     v = (os.environ.get("LLM_PROVIDER") or "").strip().lower()
-    return v or "anthropic"
+    return v or "gemini"
 
 
 def _get_chat() -> BaseChatModel:
-    """Claude, Gemini, or Ollama when ``LLM_PROVIDER`` is set."""
+    """Gemini, or Ollama when ``LLM_PROVIDER`` is set."""
     m = _llm_mode()
     if m == "heuristic":
         raise RuntimeError("_get_chat() is not used in heuristic mode")
@@ -66,7 +62,7 @@ def _get_chat() -> BaseChatModel:
             base_url=os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
             temperature=0.2,
         )
-    if m == "gemini":
+    if m in ("gemini", "google", ""):
         key = os.environ.get("GOOGLE_API_KEY")
         if not key:
             raise ValueError("GOOGLE_API_KEY is missing for LLM_PROVIDER=gemini")
@@ -76,14 +72,8 @@ def _get_chat() -> BaseChatModel:
             temperature=0.2,
             max_output_tokens=4096,
         )
-    if m in ("anthropic", "claude", ""):
-        return ChatAnthropic(
-            model=CLAUDE_3_5_SONNET,
-            temperature=0.2,
-            max_tokens=4096,
-        )
     raise ValueError(
-        f"Unknown LLM_PROVIDER={m!r}. Use: anthropic, ollama, or heuristic (no credit needed)."
+        f"Unknown LLM_PROVIDER={m!r}. Use: gemini, ollama, or heuristic."
     )
 
 

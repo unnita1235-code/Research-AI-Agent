@@ -10,7 +10,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
-from nodes import CLAUDE_3_5_SONNET, _get_chat, _llm_mode
+from nodes import _get_chat, _llm_mode
 
 logger = logging.getLogger(__name__)
 
@@ -48,28 +48,32 @@ class _TopicList(BaseModel):
 
 
 def _chat_for_summary() -> BaseChatModel:
-    """Heuristic mode has no default chat; use Anthropic or Ollama when configured."""
+    """Heuristic mode has no default chat; use Gemini or Ollama when configured."""
     m = _llm_mode()
-    if m == "heuristic" and (os.environ.get("ANTHROPIC_API_KEY") or "").strip():
-        return ChatAnthropic(
-            model=CLAUDE_3_5_SONNET,
+    if m == "heuristic" and (os.environ.get("GOOGLE_API_KEY") or "").strip():
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        return ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash",
+            google_api_key=os.environ.get("GOOGLE_API_KEY"),
             temperature=0.3,
-            max_tokens=220,
+            max_output_tokens=220,
         )
     if m == "heuristic":
         raise ValueError(
-            "Executive summary in heuristic mode needs ANTHROPIC_API_KEY, or set LLM_PROVIDER=ollama/anthropic."
+            "Executive summary in heuristic mode needs GOOGLE_API_KEY, or set LLM_PROVIDER=ollama/gemini."
         )
     return _get_chat()
 
 
-async def _suggest_with_anthropic(seed: str | None) -> list[str] | None:
-    if (os.environ.get("ANTHROPIC_API_KEY") or "").strip() and _llm_mode() in ("anthropic", "claude", ""):
+async def _suggest_with_llm(seed: str | None) -> list[str] | None:
+    if (os.environ.get("GOOGLE_API_KEY") or "").strip() and _llm_mode() in ("gemini", "google", ""):
         try:
-            llm = ChatAnthropic(
-                model=CLAUDE_3_5_SONNET,
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            llm = ChatGoogleGenerativeAI(
+                model="gemini-2.0-flash",
+                google_api_key=os.environ.get("GOOGLE_API_KEY"),
                 temperature=0.5,
-                max_tokens=400,
+                max_output_tokens=400,
             )
             structured = llm.with_structured_output(_TopicList)
             human = "Suggest 5–7 specific, diverse search topics for a deep research agent. "
@@ -96,7 +100,7 @@ async def _suggest_with_anthropic(seed: str | None) -> list[str] | None:
 async def suggest_topic_strings_async(seed: str | None) -> list[str]:
     if not suggest_topics_enabled():
         return list(STATIC_SUGGEST_TOPICS)
-    got = await _suggest_with_anthropic(seed)
+    got = await _suggest_with_llm(seed)
     if got and len(got) >= 3:
         return got
     return list(STATIC_SUGGEST_TOPICS)
