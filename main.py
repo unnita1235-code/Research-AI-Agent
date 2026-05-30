@@ -87,6 +87,8 @@ def _env_ok_for_research() -> list[str]:
     mode = (os.environ.get("LLM_PROVIDER") or "").strip().lower() or "anthropic"
     if mode in ("heuristic", "ollama"):
         required: tuple[str, ...] = ("TAVILY_API_KEY",)
+    elif mode == "gemini":
+        required = ("GOOGLE_API_KEY", "TAVILY_API_KEY")
     else:
         required = ("ANTHROPIC_API_KEY", "TAVILY_API_KEY")
     return [k for k in required if not os.environ.get(k)]
@@ -218,6 +220,7 @@ def public_config() -> dict[str, Any]:
         "llm_provider": p,
         "tavily_configured": bool((os.environ.get("TAVILY_API_KEY") or "").strip()),
         "anthropic_configured": bool((os.environ.get("ANTHROPIC_API_KEY") or "").strip()),
+        "gemini_configured": bool((os.environ.get("GOOGLE_API_KEY") or "").strip()),
         "suggest_topics_enabled": suggest_topics_enabled(),
         "executive_summary_enabled": executive_summary_enabled(),
         "ask_enabled": ask_feature_enabled(),

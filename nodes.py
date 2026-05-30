@@ -20,6 +20,7 @@ from urllib.parse import urlparse, urlunparse
 from typing import Any
 
 from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field, field_validator
@@ -53,7 +54,7 @@ def _llm_mode() -> str:
 
 
 def _get_chat() -> BaseChatModel:
-    """Claude, or Ollama when ``LLM_PROVIDER=ollama``."""
+    """Claude, Gemini, or Ollama when ``LLM_PROVIDER`` is set."""
     m = _llm_mode()
     if m == "heuristic":
         raise RuntimeError("_get_chat() is not used in heuristic mode")
@@ -64,6 +65,16 @@ def _get_chat() -> BaseChatModel:
             model=os.environ.get("OLLAMA_MODEL", "llama3.2"),
             base_url=os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
             temperature=0.2,
+        )
+    if m == "gemini":
+        key = os.environ.get("GOOGLE_API_KEY")
+        if not key:
+            raise ValueError("GOOGLE_API_KEY is missing for LLM_PROVIDER=gemini")
+        return ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash",
+            google_api_key=key,
+            temperature=0.2,
+            max_output_tokens=4096,
         )
     if m in ("anthropic", "claude", ""):
         return ChatAnthropic(
